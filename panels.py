@@ -3,6 +3,7 @@ from bpy.types import Panel
 import math
 import os
 from . import utils_export
+from . import op_island_orient
 
 class VIEW3D_PT_cc_export(Panel):
     bl_label = "CC Export"
@@ -105,7 +106,7 @@ class VIEW3D_PT_cc_bake(Panel):
         # 烘焙和预览按钮
         box = col.box()
         col3 = box.column(align=True)
-        col3.operator("cc.bake_textures", text="开始烘焙", icon='RENDER_STILL')
+        col3.operator("cc.bake_textures", text="开始烘", icon='RENDER_STILL')
         
         row = col3.row(align=True)
         op1 = row.operator("object.preview_bake", text="预览组合")
@@ -114,96 +115,6 @@ class VIEW3D_PT_cc_bake(Panel):
         op2.bake_type = 'AO'
         op3 = row.operator("object.preview_bake", text="预览光照")
         op3.bake_type = 'LIGHT'
-
-class VIEW3D_PT_cc_uv(Panel):
-    bl_label = "CC UV"
-    bl_idname = "VIEW3D_PT_cc_uv"
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = 'CC_Tools'
-    bl_options = {'DEFAULT_CLOSED'}
-
-    def draw(self, context):
-        self.draw_uv_tools(context, self.layout)
-
-    @staticmethod
-    def draw_uv_tools(context, layout):
-        if context.active_object and context.active_object.mode != 'EDIT':
-            layout.label(text="请切换到编辑模式", icon='INFO')
-            return
-            
-        col = layout.column(align=True)
-        
-        # 添加饼菜单按钮
-        box = col.box()
-        row = box.row(align=True)
-        row.operator("wm.call_menu_pie", text="快速对齐 (Alt+A)", icon='ALIGN_CENTER').name = "UV_MT_PIE_align"
-        
-        # UV对齐工具
-        box = col.box()
-        col = box.column(align=True)  # 使用列布局使按钮更紧凑
-        
-        # 第一行对齐工具
-        row = col.row(align=True)
-        op = row.operator("uv.textools_island_align", text="↖")
-        op.direction = 'LEFT_TOP'
-        op = row.operator("uv.textools_island_align", text="↑")
-        op.direction = 'TOP'
-        op = row.operator("uv.textools_island_align", text="↗")
-        op.direction = 'RIGHT_TOP'
-        
-        # 第二行对齐工具
-        row = col.row(align=True)
-        op = row.operator("uv.textools_island_align", text="←")
-        op.direction = 'LEFT'
-        op = row.operator("uv.textools_island_align", text="⊙")
-        op.direction = 'CENTER'
-        op = row.operator("uv.textools_island_align", text="→")
-        op.direction = 'RIGHT'
-        
-        # 第三行对齐工具
-        row = col.row(align=True)
-        op = row.operator("uv.textools_island_align", text="↙")
-        op.direction = 'LEFT_BOTTOM'
-        op = row.operator("uv.textools_island_align", text="↓")
-        op.direction = 'BOTTOM'
-        op = row.operator("uv.textools_island_align", text="↘")
-        op.direction = 'RIGHT_BOTTOM'
-
-        # 添加选择模式提示
-        box = col.box()
-        row = box.row()
-        if context.scene.tool_settings.use_uv_select_sync:
-            row.label(text="当前模式: 同步选择", icon='UV_SYNC_SELECT')
-        else:
-            mode = context.scene.tool_settings.uv_select_mode
-            row.label(text=f"当前模式: {mode}", icon='UV')
-
-        # UV缩放工具
-        box = col.box()
-        row = box.row(align=True)
-        
-        # 左侧组：缩放按钮
-        col_left = row.column(align=True)
-        col_left.scale_y = 1.5  # 增加按钮高度
-        col_left.operator("uv.textools_island_scale", text="放大", icon='FULLSCREEN_ENTER').scale_mode = 'MAX'
-        col_left.operator("uv.textools_island_scale", text="缩小", icon='FULLSCREEN_EXIT').scale_mode = 'MIN'
-        
-        # 添加一点间隔
-        row.separator(factor=0.5)
-        
-        # 右侧组：约束条件
-        col_right = row.column(align=True)
-        col_right.scale_x = 0.6  # 减小右侧按钮的宽度
-        
-        # 使用小组来确保三个按钮宽度一致
-        sub_col = col_right.column(align=True)
-        sub_col.scale_y = 1.0  # 设置基准高度
-        
-        # 约束条件选择
-        sub_col.prop(context.scene, "uv_scale_x", text="X")
-        sub_col.prop(context.scene, "uv_scale_y", text="Y")
-        sub_col.prop(context.scene, "uv_scale_lock_ratio", text="", icon='LOCKED' if context.scene.uv_scale_lock_ratio else 'UNLOCKED')
 
 class IMAGE_PT_cc_uv(Panel):
     bl_label = "CC UV"
@@ -218,27 +129,24 @@ class IMAGE_PT_cc_uv(Panel):
         return context.space_data.type == 'IMAGE_EDITOR' and context.space_data.mode == 'UV'
 
     def draw(self, context):
-        self.draw_uv_tools(context, self.layout)
-
-    @staticmethod
-    def draw_uv_tools(context, layout):
         if context.active_object and context.active_object.mode != 'EDIT':
+            layout = self.layout
             layout.label(text="请切换到编辑模式", icon='INFO')
             return
             
-        col = layout.column(align=True)
+        col = self.layout.column(align=True)
         
-        # 添加饼菜单按钮
+        # UV移动工具
         box = col.box()
-        row = box.row(align=True)
-        row.operator("wm.call_menu_pie", text="快速对齐 (Alt+A)", icon='ALIGN_CENTER').name = "UV_MT_PIE_align"
+        box.label(text="移动工具", icon='ORIENTATION_LOCAL')
+        col1 = box.column(align=True)
         
-        # UV对齐工具
-        box = col.box()
-        col = box.column(align=True)  # 使用列布局使按钮更紧凑
+        # 添加自动旋转按钮
+        row = col1.row(align=True)
+        row.operator("cc.uv_island_orient", text="对齐旋转")
         
         # 第一行对齐工具
-        row = col.row(align=True)
+        row = col1.row(align=True)
         op = row.operator("uv.textools_island_align", text="↖")
         op.direction = 'LEFT_TOP'
         op = row.operator("uv.textools_island_align", text="↑")
@@ -247,7 +155,7 @@ class IMAGE_PT_cc_uv(Panel):
         op.direction = 'RIGHT_TOP'
         
         # 第二行对齐工具
-        row = col.row(align=True)
+        row = col1.row(align=True)
         op = row.operator("uv.textools_island_align", text="←")
         op.direction = 'LEFT'
         op = row.operator("uv.textools_island_align", text="⊙")
@@ -256,13 +164,42 @@ class IMAGE_PT_cc_uv(Panel):
         op.direction = 'RIGHT'
         
         # 第三行对齐工具
-        row = col.row(align=True)
+        row = col1.row(align=True)
         op = row.operator("uv.textools_island_align", text="↙")
         op.direction = 'LEFT_BOTTOM'
         op = row.operator("uv.textools_island_align", text="↓")
         op.direction = 'BOTTOM'
         op = row.operator("uv.textools_island_align", text="↘")
         op.direction = 'RIGHT_BOTTOM'
+
+        # UV缩放工具部分
+        box = col.box()
+        box.label(text="缩放工具", icon='FULLSCREEN_ENTER')
+
+        # 主行
+        row = box.row(align=True)
+
+        # 左侧组：缩放按钮
+        col_left = row.column(align=True)
+        col_left.scale_y = 1.5  # 保持总高度不变
+        col_left.operator("uv.textools_island_scale", text="放大").scale_mode = 'MAX'
+        col_left.operator("uv.textools_island_scale", text="缩小").scale_mode = 'MIN'
+
+        # 添加一点间隔
+        row.separator(factor=2.0)
+
+        # 右侧组：约束条件
+        col_right = row.column(align=True)
+        col_right.alignment = 'RIGHT'
+        col_right.scale_x = 1.2  # 增加右侧宽度
+
+        # 约束条件选择（竖向排列）
+        col_constraints = col_right.column(align=True)  # 移除box
+        col_constraints.scale_y = 1.0  # 设置每个按钮的高度为左侧总高度的三分之一
+
+        col_constraints.prop(context.scene, "uv_scale_x", text="", icon='EVENT_X')
+        col_constraints.prop(context.scene, "uv_scale_y", text="", icon='EVENT_Y')
+        col_constraints.prop(context.scene, "uv_scale_lock_ratio", text="", icon='LOCKED' if context.scene.uv_scale_lock_ratio else 'UNLOCKED')
 
         # 添加选择模式提示
         box = col.box()
@@ -273,31 +210,21 @@ class IMAGE_PT_cc_uv(Panel):
             mode = context.scene.tool_settings.uv_select_mode
             row.label(text=f"当前模式: {mode}", icon='UV')
 
-        # UV缩放工具
+        # UV松弛工具
         box = col.box()
+        box.label(text="松弛工具", icon='MOD_SMOOTH')
         row = box.row(align=True)
-        
-        # 左侧组：缩放按钮
+
+        # 左侧：松弛按钮和迭代次数
         col_left = row.column(align=True)
-        col_left.scale_y = 1.5  # 增加按钮高度
-        col_left.operator("uv.textools_island_scale", text="放大", icon='FULLSCREEN_ENTER').scale_mode = 'MAX'
-        col_left.operator("uv.textools_island_scale", text="缩小", icon='FULLSCREEN_EXIT').scale_mode = 'MIN'
-        
-        # 添加一点间隔
-        row.separator(factor=0.5)
-        
-        # 右侧组：约束条件
+        col_left.operator("uv.textools_island_relax", text="松弛UV")
+        col_left.prop(context.scene, "uv_relax_iterations", text="迭代")
+
+        # 右侧：约束选项
         col_right = row.column(align=True)
-        col_right.scale_x = 0.6  # 减小右侧按钮的宽度
-        
-        # 使用小组来确保三个按钮宽度一致
-        sub_col = col_right.column(align=True)
-        sub_col.scale_y = 1.0  # 设置基准高度
-        
-        # 约束条件选择
-        sub_col.prop(context.scene, "uv_scale_x", text="X")
-        sub_col.prop(context.scene, "uv_scale_y", text="Y")
-        sub_col.prop(context.scene, "uv_scale_lock_ratio", text="", icon='LOCKED' if context.scene.uv_scale_lock_ratio else 'UNLOCKED')
+        col_right.prop(context.scene, "uv_relax_x", text="X")
+        col_right.prop(context.scene, "uv_relax_y", text="Y")
+        col_right.prop(context.scene, "uv_relax_boundary", text="固定边界")
 
 # 添加历史记录菜单类
 class EXPORT_MT_directory_history(bpy.types.Menu):
@@ -315,7 +242,7 @@ class EXPORT_MT_directory_history(bpy.types.Menu):
 # 添加选择目录操作符
 class SelectDirectoryOperator(bpy.types.Operator):
     bl_idname = "export.select_directory"
-    bl_label = "���择目录"
+    bl_label = "择目录"
     bl_description = "选择历史目录"
     bl_options = {'REGISTER', 'UNDO'}
     
@@ -329,7 +256,6 @@ def register():
     bpy.utils.register_class(VIEW3D_PT_cc_export)
     bpy.utils.register_class(VIEW3D_PT_cc_mesh)
     bpy.utils.register_class(VIEW3D_PT_cc_bake)
-    bpy.utils.register_class(VIEW3D_PT_cc_uv)
     bpy.utils.register_class(IMAGE_PT_cc_uv)
     bpy.utils.register_class(EXPORT_MT_directory_history)
     bpy.utils.register_class(SelectDirectoryOperator)
@@ -396,7 +322,6 @@ def unregister():
     bpy.utils.unregister_class(VIEW3D_PT_cc_bake)
     bpy.utils.unregister_class(VIEW3D_PT_cc_mesh)
     bpy.utils.unregister_class(VIEW3D_PT_cc_export)
-    bpy.utils.unregister_class(VIEW3D_PT_cc_uv)
     bpy.utils.unregister_class(IMAGE_PT_cc_uv)
     bpy.utils.unregister_class(EXPORT_MT_directory_history)
     bpy.utils.unregister_class(SelectDirectoryOperator)

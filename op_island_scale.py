@@ -70,6 +70,12 @@ class op(bpy.types.Operator):
         scale_y = context.scene.uv_scale_y
         lock_ratio = context.scene.uv_scale_lock_ratio
         
+        # 如果没有选择任何约束，默认使用锁定比例的平均缩放
+        if not scale_x and not scale_y and not lock_ratio:
+            scale_x = True
+            scale_y = True
+            lock_ratio = True
+        
         # 找到目标大小
         if self.scale_mode == 'MAX':
             target_x = max(bbox.width for _, bbox in island_bboxes)
@@ -81,14 +87,19 @@ class op(bpy.types.Operator):
         # 缩放每个岛
         for island, bbox in island_bboxes:
             if lock_ratio:
-                # 锁定比例时，使用选中方向的缩放比例
-                if scale_x:
+                # 锁定比例时，使用平均缩放比例
+                if scale_x and scale_y:
+                    # 计算平均缩放比例
+                    scale_factor_x = target_x / bbox.width
+                    scale_factor_y = target_y / bbox.height
+                    scale_factor = (scale_factor_x + scale_factor_y) / 2
+                    utils_uv.scale_island(island, uv_layer, scale_factor, scale_factor)
+                elif scale_x:
                     scale_factor = target_x / bbox.width
+                    utils_uv.scale_island(island, uv_layer, scale_factor, scale_factor)
                 elif scale_y:
                     scale_factor = target_y / bbox.height
-                else:
-                    scale_factor = 1.0
-                utils_uv.scale_island(island, uv_layer, scale_factor, scale_factor)
+                    utils_uv.scale_island(island, uv_layer, scale_factor, scale_factor)
             else:
                 # 不锁定比例时，分别处理X和Y方向
                 scale_factor_x = target_x / bbox.width if scale_x else 1.0

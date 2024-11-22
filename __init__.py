@@ -25,6 +25,8 @@ from . import op_batch_export
 from . import op_bake
 from . import op_mesh_tools
 from . import op_preview_bake
+from . import op_island_relax
+from . import op_island_orient
 from . import panels
 
 # 定义目录历史记录的属性组
@@ -47,6 +49,8 @@ def register():
         op_bake,
         op_mesh_tools,
         op_preview_bake,
+        op_island_relax,
+        op_island_orient,
         panels
     )
     
@@ -117,6 +121,8 @@ def unregister():
         op_bake,
         op_mesh_tools,
         op_preview_bake,
+        op_island_relax,
+        op_island_orient,
         panels
     )
     
